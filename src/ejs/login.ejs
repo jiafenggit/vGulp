@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <%- include('common/head.inc') %>
+    <style>
+        <%# 额外的内容，可以根据中英文不同来添加不同的内容,目录自定义 %>
+        <% if(_lang='zh'){ %>	
+        	<%- include('extra/zh.css') %>
+        <% } %>
+    </style>
+</head>
+<body>
+    <div id="app">
+        login
+        <a href="index.html">index</a>
+    </div>
+</body>
+</html>
