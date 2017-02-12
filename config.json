@@ -1,17 +1,10 @@
 {
-    "project" : "Gulp",     
+    "project" : "vGulp",     
     "localserver" : {
         "host" : "localhost",
         "port" : "8081"
     },
-    "tinypngapi": "Tinypng API KEY",
-    "sftp" : {
-        "host" : "",
-        "user" : "",
-        "port" : "",
-        "key" : "~/.ssh/test",
-        "remotePath" :"/"
-    },
+    "displayInfo": false,
     "pkg": {
         "author":"",
         "description":"",
@@ -20,12 +13,12 @@
         "license":""
     },
     "replaceWord": {
-        "origin": "../",
-        "dist": "/static/"
+        "origin": "",
+        "dist": ""
     },
     "concatCssFiles": {
         "filename": "init.min.css",
         "folder": "common",
-        "files": ["init.css","global.css","header.css","footer.css"]
+        "files": ["init.css","header.css"]
     }    
 }

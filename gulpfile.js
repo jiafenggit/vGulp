@@ -1,8 +1,7 @@
-"use strict";
+"use strict"
 
 const gulp = require('gulp'),
     opn = require('opn'),
-    webpack = require('webpack'),
     path = require('path'),
     fs = require('fs'),
     $ = require('gulp-load-plugins')(),
@@ -21,27 +20,30 @@ const banner = ['/**',
     ' * @license: <%= pkg.license %>',
     ' */',
     ''].join('\n');
-let lang = argv.lang || 'zh';
+const lang = argv.lang || 'zh';
 const src = {
-    zh_tpl: 'src/html/*.html',
-    en_tpl: 'src/en-html/*.html',
+    ejs: 'src/ejs',    // 指定ejs目录
     sass: 'src/sass',
     images: 'src/images/**',
+    js: 'src/js/**',
     css: 'src/css',  // sass的输出目录
-    data: 'src/data'    // 数据文件
+    font: 'src/font/**',
+    source: 'src/source/**',    // 其他文件（音乐，视频等）
+    // data: 'src/data',    // ejs编译方式一：数据文件目录
+    data: 'data.json'          // ejs编译方式二：数据文件
 }
 const dist = {
-    html: './html',
-    js: './static/js',
-    css: './static/css',
-    images: './static/images',
-    font: './static/font',
-    source: './static/source'
+    html: 'html',
+    js: 'static/js',
+    css: 'static/css',
+    images: 'static/images',
+    font: 'static/font',
+    source: 'static/source'
 }
 // 任务，将根据key值生成 gulp 任务
 const tasks = {
     ejs: function() {   // ejs 模板编译
-        return gulp.src('src/ejs/*.ejs')
+        return gulp.src(src.ejs + '/*.ejs')
             .pipe($.data(function (file) {
                 const filePath = file.path;
                 /* 方式一：一个页面对应一个json，另外定义一个全局的global.json文件 */
@@ -54,12 +56,11 @@ const tasks = {
                 }
                 return fs.existsSync(cur) ? Object.assign(global_json, JSON.parse(fs.readFileSync(cur)), {_lang:lang}) : global_json*/
                 /* 方式二：所有页面使用同一个data.json文件 */
-                const data_file = 'data.json';
-                if(fs.existsSync(data_file)) {
-                    let json_data = JSON.parse(fs.readFileSync(data_file))[lang];
+                if(fs.existsSync(src.data)) {
+                    let json_data = JSON.parse(fs.readFileSync(src.data))[lang];
                     return Object.assign({global: json_data['global']}, json_data[path.basename(filePath, '.ejs')], {_lang:lang});
                 } else {
-                    throw 'data.json 文件不存在';
+                    throw src.data + '文件不存在';
                 }
             }))
             .pipe($.ejs({},{},{ext: '.html'}).on('error', function(err) {
@@ -69,13 +70,13 @@ const tasks = {
             .pipe(gulp.dest('src/'+lang))
             .pipe(connect.reload());
     },
-    compass: function() { // SASS 代码编译、合并
+    sass: function() { // SASS 代码编译、合并
         const concatCss = config.concatCssFiles,
             files = concatCss.files.map(function(item) {
                 return '**/' + item;
             }),
             f = $.filter(files,{restore: true});
-        return gulp.src(src.sass+'/**')
+        return gulp.src(src.sass + '/**')
             .pipe($.plumber())
             .pipe($.compass({
                 css: src.css,
@@ -96,7 +97,7 @@ const tasks = {
             .pipe(connect.reload());
     },
     js: function() {    // js
-        gulp.src(['src/js/*.js','admin/**/*.*'])
+        gulp.src(src.js)
             .pipe(connect.reload())
     },
     clean: function() { // 多余文件删除
@@ -105,41 +106,41 @@ const tasks = {
             .pipe(gulp.dest('./clean'));
     },
     watch: function() {     // 文件监控
-        // gulp.watch(['src/sass/**/*.scss'], [complie.compass]);
-        gulp.watch(['src/sass/**/*.scss'], ['compass']);
-        gulp.watch(['data.json','src/ejs/**','src/data/**'], ['ejs']);
-        // gulp.watch(['data.json','src/ejs/**','src/data/**','src/html/*.*','src/en-html/*.*'], ['ejs']);
-        gulp.watch(['src/js/*.js'], ['js']);
+        gulp.watch([src.sass + '/**'], ['sass']);
+        gulp.watch([src.data,src.ejs + '/**'], ['ejs']);
+        // gulp.watch([src.data + '/**',src.ejs + '/**'], ['ejs']);
+        gulp.watch([src.js], ['js']);
     }
 }
-for(let key in tasks) {
+// 生成 gulp 任务
+Object.keys(tasks).forEach(function(key) {
     gulp.task(key, function() {
         return tasks[key]()
     });
-}
+});
 // 打包
 const build = {
     html: function() {
         const html = $.filter(['**/en/*.html','**/zh/*.html']);
-        return gulp.src('src/**/*.html')   //- 读取 rev-manifest.json 文件以及需要进行css名替换的文件
+        return gulp.src('src/**/*.html')
             .pipe(html)
-            .pipe($.replace(config.replaceWord.origin,config.replaceWord.dist))                                   //- 执行文件内css名的替换
+            .pipe($.replace(config.replaceWord.origin,config.replaceWord.dist))     //- 执行文件内css名的替换
             .pipe(gulp.dest(dist.html)); 
     },
     js: function() {
-        return gulp.src('src/js/*.js')
+        return gulp.src(src.js)
             .pipe($.replace(config.replaceWord.origin,config.replaceWord.dist))
             .pipe($.uglify())
-            .pipe($.header(banner, { pkg : pkg } ))
+            .pipe($.if(config.displayInfo, $.header(banner, { pkg : pkg } )))
             .pipe(gulp.dest(dist.js));
     },
     css: function() {
         const file = $.filter(['**','!*' + config.concatCssFiles.folder],{restore: true});
-        return gulp.src('src/css/*.css')
+        return gulp.src(src.css + '/*.css')
             .pipe(file)
             .pipe($.replace(config.replaceWord.origin,config.replaceWord.dist))
             .pipe($.cleanCss())
-            .pipe($.header(banner, { pkg : pkg } ))
+            .pipe($.if(config.displayInfo, $.header(banner, { pkg : pkg } )))
             .pipe(gulp.dest(dist.css));
     },
     img: function() {
@@ -152,16 +153,16 @@ const build = {
             .pipe(gulp.dest(dist.images));
     },
     font: function() {
-        return gulp.src('src/font/*')
+        return gulp.src(src.font)
             .pipe(gulp.dest(dist.font));
     },
     other: function() {
-        return gulp.src('src/source/**')
+        return gulp.src(src.source)
             .pipe(gulp.dest(dist.source));
     }
 }
 //默认任务
-gulp.task('default', ['compass', 'ejs', 'watch'], function(){
+gulp.task('default', ['sass', 'ejs', 'watch'], function(){
     console.log('请开始编写你的代码！');
     // 开启本地 Web 服务器功能
     connect.server({
@@ -172,7 +173,7 @@ gulp.task('default', ['compass', 'ejs', 'watch'], function(){
     opn( 'http://' + config.localserver.host + ':' + config.localserver.port + '/src/'+ lang +'/' );
 });
 //将相关项目文件复制到dist 文件夹下 并压缩
-gulp.task('build', ['complieFiles', 'clean'], function(){
+gulp.task('build', ['sass', 'ejs', 'js', 'clean'], function(){
     console.log('正在打包你的代码！');
     for(let key in build) {
         build[key]();
@@ -184,7 +185,7 @@ gulp.task('help',function () {
     console.log('    gulp          开发，添加命令 --lang= 可以指定语言，例：gulp --lang=en');
     console.log('    gulp build    打包');
     console.log('    gulp ejs      ejs模板编译');
-    console.log('    gulp compass  sass编译');
+    console.log('    gulp sass     sass编译');
     console.log('    gulp clean    清理无用文件');
     console.log('    gulp watch    监听文件改变');
 });
