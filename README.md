@@ -1,4 +1,23 @@
-# vGulp
+# vGulp:利用Gulp配置的前端项目自动化工作流
+
+
+### 使用方法：
+
+1.全局安装gulp： 
+
+	$ npm install --global gulp 
+
+2. 克隆本git项目到你的文件夹下：
+
+	$ git clone https://github.com/Alvin-Liu/vGulp.git
+
+3. 安装相关模块：
+
+	$ npm install
+
+4.在config.json中进行简单配置。
+
+### gulp相关任务命令如下： 
 
 > gulp、gulp ejs、gulp clean、gulp watch 默认处理的lang为zh
 
@@ -12,7 +31,7 @@
 
 config 目录说明:
 
-`
+```
 	{
 	    "project" : "vGulp",     
 	    "localserver" : {       //  本地服务器设置
@@ -37,4 +56,4 @@ config 目录说明:
 	        "files": ["init.css","header.css"]   // 合并文件的顺序，文件名越前合并后的代码在越前面
 	    }    
 	}
-`
+```
