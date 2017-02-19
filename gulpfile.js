@@ -1,45 +1,28 @@
 "use strict"
 
 const gulp = require('gulp'),
-    opn = require('opn'),
     path = require('path'),
     fs = require('fs'),
-    $ = require('gulp-load-plugins')(),
-    connect = require('gulp-connect'),
-    pngquant = require('imagemin-pngquant'),
     argv = require('yargs').argv,
+    $ = require('gulp-load-plugins')(),
+    pngquant = require('imagemin-pngquant'),
     config = require('./config.json'),
-    browserSync = require('browser-sync');
+    browserSync = require('browser-sync'),
+    reload = browserSync.reload;
 // 头部信息
-const pkg = config.pkg;
-const banner = ['/**',
-    ' * @author: <%= pkg.author %>',
-    ' * @description: <%= pkg.description %>',
-    ' * @version: v<%= pkg.version %>',
-    ' * @homepage: <%= pkg.homepage %>',
-    ' * @license: <%= pkg.license %>',
-    ' */',
-    ''].join('\n');
-const lang = argv.lang || 'zh';
-const src = {
-    ejs: 'src/ejs',    // 指定ejs目录
-    sass: 'src/sass',
-    images: 'src/images/**',
-    js: 'src/js/**',
-    css: 'src/css',  // sass的输出目录
-    font: 'src/font/**',
-    source: 'src/source/**',    // 其他文件（音乐，视频等）
-    // data: 'src/data',    // ejs编译方式一：数据文件目录
-    data: 'data.json'          // ejs编译方式二：数据文件
-}
-const dist = {
-    html: 'html',
-    js: 'static/js',
-    css: 'static/css',
-    images: 'static/images',
-    font: 'static/font',
-    source: 'static/source'
-}
+const pkg = config.pkg,
+    banner = ['/**',
+        ' * @author: <%= pkg.author %>',
+        ' * @description: <%= pkg.description %>',
+        ' * @version: v<%= pkg.version %>',
+        ' * @homepage: <%= pkg.homepage %>',
+        ' * @license: <%= pkg.license %>',
+        ' */',
+        ''].join('\n'),
+    lang = argv.lang || 'zh',
+    src = config.src,
+    dist = config.dist;
+
 // 任务，将根据key值生成 gulp 任务
 const tasks = {
     ejs: function() {   // ejs 模板编译
@@ -67,25 +50,23 @@ const tasks = {
                 $.util.log(err);
                 this.emit('end');
             }))
-            .pipe(gulp.dest('src/'+lang))
-            .pipe(connect.reload());
+            .pipe(gulp.dest('src/' + lang))
+            .pipe(reload({stream:true}));
     },
     sass: function() { // SASS 代码编译、合并
         const concatCss = config.concatCssFiles,
             files = concatCss.files.map(function(item) {
-                return '**/' + item;
+                return '**/'+concatCss.folder+'/' + item;
             }),
             f = $.filter(files,{restore: true});
         return gulp.src(src.sass + '/**')
             .pipe($.plumber())
-            .pipe($.compass({
-                css: src.css,
-                sass: src.sass
-            }))
+            .pipe($.sass())
             .pipe(f)
             .pipe($.order(files))
             .pipe($.concat(concatCss.filename))
             .pipe(f.restore)
+            .pipe($.filter(src.sass + '/*.css'))
             .pipe($.autoprefixer({
                 browsers: ['last 2 versions','Safari >0', 'Explorer >0', 'Edge >0', 'Opera >0', 'Firefox >=20'],
                 cascade: false, //是否美化属性值 默认：true 像这样:
@@ -94,24 +75,32 @@ const tasks = {
                 remove:true //是否去掉不必要的前缀 默认：true
             }))
             .pipe(gulp.dest(src.css))
-            .pipe(connect.reload());
+            .pipe(reload({stream:true}));
     },
     js: function() {    // js
-        gulp.src(src.js)
-            .pipe(connect.reload())
+        const concatJs = config.concatJsFiles,
+            files = concatJs.files.map(function(item) {
+                return '**/'+concatJs.folder+'/' + item;
+            });
+        return gulp.src(files)
+            .pipe($.order(files))
+            .pipe($.concat(concatJs.filename))
+            .pipe(gulp.dest(src.js))
+            .pipe(reload({stream:true}));
     },
-    clean: function() { // 多余文件删除
-        return gulp.src('./.sass-cache')
+    clean: function() { // 文件删除
+        return gulp.src(['.sass-cache',dist.html])
             .pipe($.clean({force: true}))
-            .pipe(gulp.dest('./clean'));
+            .pipe(gulp.dest('clean'));
     },
     watch: function() {     // 文件监控
-        gulp.watch([src.sass + '/**'], ['sass']);
+        gulp.watch(src.sass + '/**', ['sass']);
         gulp.watch([src.data,src.ejs + '/**'], ['ejs']);
         // gulp.watch([src.data + '/**',src.ejs + '/**'], ['ejs']);
-        gulp.watch([src.js], ['js']);
+        gulp.watch(src.js + '/**', ['js']);
+        gulp.watch(src.images + '/**').on('change', reload);
     }
-}
+};
 // 生成 gulp 任务
 Object.keys(tasks).forEach(function(key) {
     gulp.task(key, function() {
@@ -121,63 +110,100 @@ Object.keys(tasks).forEach(function(key) {
 // 打包
 const build = {
     html: function() {
-        const html = $.filter(['**/en/*.html','**/zh/*.html']);
+        const replace = {
+                origin: config.replaceWord.html.origin,
+                dist: config.replaceWord.html.dist
+            },
+            options = {
+                removeComments: true,//清除HTML注释
+                collapseWhitespace: true,//压缩HTML
+                collapseBooleanAttributes: true,//省略布尔属性的值 <input checked="true"/> ==> <input />
+                removeEmptyAttributes: true,//删除所有空格作属性值 <input id="" /> ==> <input />
+                removeScriptTypeAttributes: true,//删除<script>的type="text/javascript"
+                removeStyleLinkTypeAttributes: true,//删除<style>和<link>的type="text/css"
+                minifyJS: true,//压缩页面JS
+                minifyCSS: true//压缩页面CSS
+            },
+            html = config.lang.map(function(item) {
+                return 'src/'+item + '/**';
+            }),
+            f = $.filter(html);
         return gulp.src('src/**/*.html')
-            .pipe(html)
-            .pipe($.replace(config.replaceWord.origin,config.replaceWord.dist))     //- 执行文件内css名的替换
+            .pipe(f)
+            .pipe($.replace(replace.origin,replace.dist))     //- 执行文件内css名的替换
+            .pipe($.htmlmin(options))
+            .pipe($.if(config.displayInfo, $.header(banner, { pkg : pkg } )))
             .pipe(gulp.dest(dist.html)); 
     },
     js: function() {
-        return gulp.src(src.js)
-            .pipe($.replace(config.replaceWord.origin,config.replaceWord.dist))
+        const replace = {
+                origin: config.replaceWord.js.origin,
+                dist: config.replaceWord.js.dist
+            };
+        return gulp.src(src.js + '/*.js')   // 只复制根目录
+            .pipe($.replace(replace.origin,replace.dist))
             .pipe($.uglify())
             .pipe($.if(config.displayInfo, $.header(banner, { pkg : pkg } )))
             .pipe(gulp.dest(dist.js));
     },
     css: function() {
-        const file = $.filter(['**','!*' + config.concatCssFiles.folder],{restore: true});
-        return gulp.src(src.css + '/*.css')
-            .pipe(file)
-            .pipe($.replace(config.replaceWord.origin,config.replaceWord.dist))
+        const replace = {
+                origin: config.replaceWord.css.origin,
+                dist: config.replaceWord.css.dist
+            },
+            timestamp = +new Date();
+        return gulp.src(src.css + '/**')
+            .pipe($.cssSpriter({
+                // 生成的spriter的位置
+                'spriteSheet': dist.images + '/sprite_'+timestamp+'.png',
+                // 生成样式文件图片引用地址的路径
+                // 如下将生产：backgound:url(../images/sprite20324232.png)
+                'pathToSpriteSheetFromCSS': '../images/sprite_'+timestamp+'.png'
+            }))
             .pipe($.cleanCss())
+            .pipe($.replace(replace.origin,replace.dist))
             .pipe($.if(config.displayInfo, $.header(banner, { pkg : pkg } )))
             .pipe(gulp.dest(dist.css));
     },
     img: function() {
         return gulp.src(src.images)
-            .pipe($.imagemin({
+            .pipe($.imagemin({ 
                 progressive: true,
                 svgoPlugins: [{removeViewBox: false}],
                 use: [pngquant()]
             }))
             .pipe(gulp.dest(dist.images));
     },
-    font: function() {
-        return gulp.src(src.font)
-            .pipe(gulp.dest(dist.font));
-    },
     other: function() {
         return gulp.src(src.source)
             .pipe(gulp.dest(dist.source));
     }
-}
+};
 //默认任务
-gulp.task('default', ['sass', 'ejs', 'watch'], function(){
+gulp.task('default', ['sass', 'ejs', 'js', 'watch'], function() {
+    const s = config.localserver,
+        options = {
+            startPath: lang,
+            port: s.port,
+            reloadDebounce: 0
+        },
+        proxy = {   // 代理
+            target: s.target
+        },
+        server = {  // 静态
+            baseDir: s.baseDir
+        },
+        opt = s.proxy ? {proxy:proxy} : {server:server};
+    Object.assign(options,opt);
+    browserSync.init(options);
     console.log('请开始编写你的代码！');
-    // 开启本地 Web 服务器功能
-    connect.server({
-        livereload: true,
-        port: config.localserver.port
-    });
-    //  通过浏览器打开本地 Web服务器 路径
-    opn( 'http://' + config.localserver.host + ':' + config.localserver.port + '/src/'+ lang +'/' );
 });
 //将相关项目文件复制到dist 文件夹下 并压缩
 gulp.task('build', ['sass', 'ejs', 'js', 'clean'], function(){
-    console.log('正在打包你的代码！');
     for(let key in build) {
         build[key]();
     }
+    console.log('正在打包你的代码！');
 });
 gulp.task('help',function () {
     console.log('gulp任务命令：')
@@ -186,6 +212,7 @@ gulp.task('help',function () {
     console.log('    gulp build    打包');
     console.log('    gulp ejs      ejs模板编译');
     console.log('    gulp sass     sass编译');
+    console.log('    gulp js       js合并');
     console.log('    gulp clean    清理无用文件');
     console.log('    gulp watch    监听文件改变');
 });
