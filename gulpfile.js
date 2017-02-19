@@ -29,21 +29,24 @@ const tasks = {
         return gulp.src(src.ejs + '/*.ejs')
             .pipe($.data(function (file) {
                 const filePath = file.path;
-                /* 方式一：一个页面对应一个json，另外定义一个全局的global.json文件 */
-                /*const cur = src.data + '/' + lang + '/' + path.basename(filePath, '.html') + '.json';
-                let global_json = {};
-                if(fs.existsSync(src.data + '/global.json')) {
-                    global_json = {global: JSON.parse(fs.readFileSync(src.data + '/global.json'))}
+                if(config.data_use == 0) {
+                    /* 方式一：一个页面对应一个json，另外定义一个全局的global.json文件 */
+                    const cur = src.data + '/' + lang + '/' + path.basename(filePath, '.html') + '.json';
+                    let global_json = {};
+                    if(fs.existsSync(src.data + '/global.json')) {
+                        global_json = {global: JSON.parse(fs.readFileSync(src.data + '/global.json'))}
+                    } else {
+                        throw src.data + '/global.json 文件不存在';
+                    }
+                    return fs.existsSync(cur) ? Object.assign(global_json, JSON.parse(fs.readFileSync(cur)), {_lang:lang}) : global_json
                 } else {
-                    throw src.data + '/global.json 文件不存在';
-                }
-                return fs.existsSync(cur) ? Object.assign(global_json, JSON.parse(fs.readFileSync(cur)), {_lang:lang}) : global_json*/
-                /* 方式二：所有页面使用同一个data.json文件 */
-                if(fs.existsSync(src.data)) {
-                    let json_data = JSON.parse(fs.readFileSync(src.data))[lang];
-                    return Object.assign({global: json_data['global']}, json_data[path.basename(filePath, '.ejs')], {_lang:lang});
-                } else {
-                    throw src.data + '文件不存在';
+                    /* 方式二：所有页面使用同一个data.json文件 */
+                    if(fs.existsSync(src.data)) {
+                        let json_data = JSON.parse(fs.readFileSync(src.data))[lang];
+                        return Object.assign({global: json_data['global']}, json_data[path.basename(filePath, '.ejs')], {_lang:lang});
+                    } else {
+                        throw src.data + '文件不存在';
+                    }
                 }
             }))
             .pipe($.ejs({},{},{ext: '.html'}).on('error', function(err) {

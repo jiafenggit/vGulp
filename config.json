@@ -23,6 +23,7 @@
         "target": "127.0.0.1"
     },
     "lang":["zh","en"],
+    "data_use": 1,
     "displayInfo": false,
     "pkg": {
         "author":"",
