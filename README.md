@@ -1,3 +1,5 @@
+vGulp介绍：[前端自动化工具vGulp](http://www.limon.space/2017/%E5%89%8D%E7%AB%AF%E8%87%AA%E5%8A%A8%E5%8C%96%E5%B7%A5%E5%85%B7vGulp/ "前端自动化工具vGulp")
+
 ## 关于vGulp
 
 vGulp基于Gulp 3.9.1开发而成，用于处理前端项目文件的编译、压缩、合并、打包工作。HTML使用ejs模板编译而成，可根据自定义的语言包和命令编译成不同语言的HTML文件；css使用sass预处理编译而成，自动添加-webkit-、-moz-、-ms-等前缀；JS没有做过多处理，可以根据个人需要在gulpfile.js文件中添加JSLint或ESLint等。
