@@ -28,7 +28,7 @@ $ git clone https://github.com/Alvin-Liu/vGulp.git
 3.安装模块依赖：	
 
 ```
-npm install
+$ npm install
 ```
 
 4.根据需要简单配置自己的config.json，示例代码：
@@ -100,14 +100,14 @@ npm install
 6.执行gulp任务：
 
 ```
-gulp help   // gulp参数说明
-gulp        // 开发，添加命令 --lang= 可以指定语言，例：gulp --lang=en
-gulp build  // 打包
-gulp ejs    // ejs模板编译
-gulp sass   // sass编译
-gulp js     // js合并
-gulp clean  // 清理无用文件
-gulp watch  // 监听文件改变
+$ gulp help   // gulp参数说明
+$ gulp        // 开发，添加命令 --lang= 可以指定语言，例：gulp --lang=en
+$ gulp build  // 打包
+$ gulp ejs    // ejs模板编译
+$ gulp sass   // sass编译
+$ gulp js     // js合并
+$ gulp clean  // 清理无用文件
+$ gulp watch  // 监听文件改变
 ```
 
 ### 特别说明
